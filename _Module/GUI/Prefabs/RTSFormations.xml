@@ -1,0 +1,54 @@
+<Prefab>
+    <Constants>
+        <Constant Name="FormationList.MarginSide" Value="15" />
+        <Constant Name="FormationList.MarginTop" Value="0" />
+        <Constant Name="CommandersList.MinWidth" Value="320" />
+
+        <!-- Action Buttons Constants -->
+        <Constant Name="DoneButton.Width" BrushLayer="Default" BrushName="ButtonBrush1" BrushValueType="Width" />
+        <Constant Name="DoneButton.Height" BrushLayer="Default" BrushName="ButtonBrush1" BrushValueType="Height" />
+        <Constant Name="AutoDeployButton.Width" BrushLayer="Default" BrushName="ButtonBrush2" BrushValueType="Width" />
+        <Constant Name="AutoDeployButton.Height" BrushLayer="Default" BrushName="ButtonBrush2" BrushValueType="Height" />
+
+        <!-- Class Brush Constants -->
+        <Constant Name="UnsetBrush" Value="OrderOfBattle.FormationClass.Unset" />
+        <Constant Name="InfantryBrush" Value="OrderOfBattle.FormationClass.Infantry" />
+        <Constant Name="RangedBrush" Value="OrderOfBattle.FormationClass.Ranged" />
+        <Constant Name="CavalryBrush" Value="OrderOfBattle.FormationClass.Cavalry" />
+        <Constant Name="HorseArcherBrush" Value="OrderOfBattle.FormationClass.HorseArcher" />
+        <Constant Name="InfantryAndRangedBrush" Value="OrderOfBattle.FormationClass.InfantryAndRanged" />
+        <Constant Name="CavalryAndHorseArcherBrush" Value="OrderOfBattle.FormationClass.CavalryAndHorseArcher" />
+
+    </Constants>
+    <Window>
+        <OrderOfBattleScreenWidget UpdateChildrenStates="true" DoNotAcceptEvents="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" IsVisible="@IsEnabled" AreCameraControlsEnabled="@AreCameraControlsEnabled" CameraEnabledAlpha="0.30" AlphaChangeDuration="0.1" Markers="Markers" LeftSideFormations="LeftSideFormations" RightSideFormations="RightSideFormations" CommanderPool="CommanderPool">
+            <Children>
+                <!-- Formation Markers -->
+                <Widget Id="Markers" UpdateChildrenStates="true" DoNotAcceptEvents="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent">
+                    <Children>
+
+                        <!-- First Half Markers -->
+                        <BasicContainer DataSource="{FormationsFirstHalf}" UpdateChildrenStates="true" DoNotAcceptEvents="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent">
+                            <ItemTemplate>
+
+                                <OrderOfBattle.Formation.Marker />
+
+                            </ItemTemplate>
+                        </BasicContainer>
+
+                        <!-- Second Half Markers -->
+                        <BasicContainer DataSource="{FormationsSecondHalf}" UpdateChildrenStates="true" DoNotAcceptEvents="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent">
+                            <ItemTemplate>
+
+                                <OrderOfBattle.Formation.Marker />
+
+                            </ItemTemplate>
+                        </BasicContainer>
+
+                    </Children>
+                </Widget>
+            </Children>
+        </OrderOfBattleScreenWidget>
+    </Window>
+</Prefab>
+    
