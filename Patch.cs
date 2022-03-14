@@ -2,6 +2,7 @@
 using SandBox.ViewModelCollection;
 using System.Collections.Generic;
 using System.Reflection.Emit;
+using TaleWorlds.MountAndBlade.GauntletUI;
 using TaleWorlds.MountAndBlade.ViewModelCollection.OrderOfBattle;
 
 namespace SimpleRTSCam
@@ -36,6 +37,7 @@ namespace SimpleRTSCam
                 {
                     codes.RemoveRange(i, j);
                     codes.Insert(i, new CodeInstruction(OpCodes.Ldc_I4_1));
+                    break;
                 }
             }
             return codes;
@@ -53,9 +55,41 @@ namespace SimpleRTSCam
         {
             var codes = new List<CodeInstruction>(instructions);
             if (codes[1].opcode == OpCodes.Call
-                && codes[1].operand == (object)AccessTools.Method("TaleWorlds.MountAndBlade.ViewModelCollection.OrderOfBattle.OrderOfBattleVM:DeselectAllFormations"))
+                && codes[1].operand == (object)AccessTools.Method(typeof(OrderOfBattleVM), "DeselectAllFormations"))
             {
                 codes.RemoveRange(0, 2);
+            }
+            return codes;
+        }
+    }
+    
+    // Do not unload order of battle sprites when deployment finishes.
+    // MissionOrderOfBattleGauntletUIHandler should try to unload them at end of mission as well.
+    [HarmonyPatch(typeof(MissionOrderOfBattleGauntletUIHandler), "OnDeploymentFinish")]
+    internal class MissionOrderOfBattleGauntletUIHandlerPatch : HarmonyPatch
+    {
+        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            var toRemove = new List<CodeInstruction> {
+                new CodeInstruction(OpCodes.Ldarg_0, null),
+                new CodeInstruction(OpCodes.Ldfld, (object)AccessTools.Field(typeof(MissionOrderOfBattleGauntletUIHandler), "_orderOfBattleCategory")),
+                new CodeInstruction(OpCodes.Callvirt, (object)AccessTools.Method(typeof(TaleWorlds.TwoDimension.SpriteCategory), "Unload")),
+            };
+            var codes = new List<CodeInstruction>(instructions);
+            for (int i = 0; i < codes.Count; i++)
+            {
+                int j;
+                for (j = 0; j < toRemove.Count; j++)
+                {
+                    if (codes[i + j].opcode != toRemove[j].opcode || codes[i + j].operand != toRemove[j].operand
+                        || codes[i + j].labels.Count != 0 || codes[i + j].blocks.Count != 0)
+                        break;
+                }
+                if (j == toRemove.Count)
+                {
+                    codes.RemoveRange(i, j);
+                    break;
+                }
             }
             return codes;
         }
