@@ -61,14 +61,12 @@ namespace SimpleRTSCam
         private void NoOp() { }
         private void SelectFormationAtIndex(int index)
         {
-            if (_orderUIHandler != null)
-                _orderUIHandler.SelectFormationAtIndex(index);
+            _orderUIHandler?.SelectFormationAtIndex(index);
         }
 
         private void DeselectFormationAtIndex(int index)
         {
-            if (_orderUIHandler != null)
-                _orderUIHandler.DeselectFormationAtIndex(index);
+            _orderUIHandler?.DeselectFormationAtIndex(index);
         }
         private void FocusOnAgent(Agent agent)
         {
