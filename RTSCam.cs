@@ -24,7 +24,7 @@ namespace SimpleRTSCam
         private GauntletLayer? _gauntletLayer;
         private IGauntletMovie? _movie;
         private MissionOrderGauntletUIHandler? _orderUIHandler;
-
+        private float _delayVMTick = 0f;
         public override void OnMissionScreenInitialize()
         {
             base.OnMissionScreenInitialize();
@@ -102,8 +102,14 @@ namespace SimpleRTSCam
                 {
                     _gauntletLayer?.InputRestrictions.SetMouseVisibility(true);
                 }
-                _dataSource?.OnUnitDeployed();
-                _dataSource?.Tick();
+                // This is a bit silly hack, but something about tick right after enable seems to cause
+                // the VM to go into endless recursion of updating properties.
+                _delayVMTick += dt;
+                if (_delayVMTick > 0.08f)
+                {
+                    _dataSource?.OnUnitDeployed();
+                    _dataSource?.Tick();
+                }
             }
             if (_battleStarted && Input.IsKeyPressed(InputKey.F10))
             {
@@ -116,7 +122,10 @@ namespace SimpleRTSCam
                     if (_orderUIHandler != null)
                         new Traverse(_orderUIHandler).Property("IsBattleDeployment").SetValue(true);
                     if (_dataSource != null)
+                    {
                         _dataSource.IsEnabled = true;
+                        _delayVMTick = 0f;
+                    }
                 }
                 else if (Mission.Mode == MissionMode.Deployment)
                 {
