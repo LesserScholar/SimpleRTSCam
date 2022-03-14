@@ -2,6 +2,7 @@
 using SandBox.ViewModelCollection;
 using System.Collections.Generic;
 using System.Reflection.Emit;
+using TaleWorlds.MountAndBlade.ViewModelCollection.OrderOfBattle;
 
 namespace SimpleRTSCam
 {
@@ -36,6 +37,23 @@ namespace SimpleRTSCam
                     codes.RemoveRange(i, j);
                     codes.Insert(i, new CodeInstruction(OpCodes.Ldc_I4_1));
                 }
+            }
+            return codes;
+        }
+    }
+
+    // Patch to remove deselecting formations after giving order in OoB ui
+    // The og behavior doesn't make sense since the formations aren't really deselected, it's just a visual bug
+    [HarmonyPatch(typeof(OrderOfBattleVM), "OnOrderIssued")]
+    internal class OrderOfBattleVMPatch: HarmonyPatch
+    {
+        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            var codes = new List<CodeInstruction>(instructions);
+            if (codes[1].opcode == OpCodes.Call
+                && codes[1].operand == (object)AccessTools.Method("TaleWorlds.MountAndBlade.ViewModelCollection.OrderOfBattle.OrderOfBattleVM:DeselectAllFormations"))
+            {
+                codes.RemoveRange(0, 2);
             }
             return codes;
         }

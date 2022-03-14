@@ -78,6 +78,17 @@ namespace SimpleRTSCam
                 {
                     _gauntletLayer?.InputRestrictions.SetMouseVisibility(true);
                 }
+                var orderController = Mission.Current.PlayerTeam.PlayerOrderController;
+                /*if (orderController != null)
+                {
+                    _dataSource?.DeselectAllFormations();
+                    foreach(var f in orderController.SelectedFormations)
+                    {
+                        _dataSource?.SelectFormationItemAtIndex(f.Index);
+                    }
+                }
+                */
+
                 _dataSource?.OnUnitDeployed();
                 _dataSource?.Tick();
             }
