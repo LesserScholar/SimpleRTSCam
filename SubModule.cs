@@ -87,6 +87,7 @@ namespace SimpleRTSCam
                 {
                     _gauntletLayer?.InputRestrictions.SetMouseVisibility(true);
                 }
+                _dataSource?.OnUnitDeployed();
                 _dataSource?.Tick();
             }
             if (_battleStarted && Input.IsKeyPressed(InputKey.F10))
