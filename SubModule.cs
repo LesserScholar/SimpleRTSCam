@@ -35,7 +35,6 @@ namespace SimpleRTSCam
             }
 
             _dataSource = new OrderOfBattleVM();
-
             _gauntletLayer = new GauntletLayer(this.ViewOrderPriority, "GauntletLayer", false);
             _movie = _gauntletLayer.LoadMovie("RTSFormations", _dataSource);
             _orderUIHandler = base.Mission.GetMissionBehavior<MissionOrderGauntletUIHandler>();
@@ -55,22 +54,16 @@ namespace SimpleRTSCam
             _battleStarted = true;
             this._dataSource?.Initialize(base.Mission, base.MissionScreen.CombatCamera, 
                 new Action<int>(this.SelectFormationAtIndex), new Action<int>(this.DeselectFormationAtIndex), 
-                new Action(this.NoOp), new Action(this.NoOp), 
-                new Dictionary<int, Agent>(), new Action<Agent>(this.FocusOnAgent));
+                () => { }, () => { }, 
+                new Dictionary<int, Agent>(), (Agent) => {});
         }
-        private void NoOp() { }
         private void SelectFormationAtIndex(int index)
         {
             _orderUIHandler?.SelectFormationAtIndex(index);
         }
-
         private void DeselectFormationAtIndex(int index)
         {
             _orderUIHandler?.DeselectFormationAtIndex(index);
-        }
-        private void FocusOnAgent(Agent agent)
-        {
-            MissionScreen.SetAgentToFollow(agent);
         }
 
         public override void OnMissionScreenTick(float dt)
@@ -94,21 +87,20 @@ namespace SimpleRTSCam
             {
                 if (Mission.Mode == MissionMode.Battle)
                 {
-                    Mission.SetMissionMode(MissionMode.Deployment, false);
+                    _inRtsCam = true;
                     Mission.ClearDeploymentPlanForSide(Mission.PlayerTeam.Side);
+                    Mission.SetMissionMode(MissionMode.Deployment, false);
                     _gauntletLayer?.InputRestrictions.SetMouseVisibility(true);
                     _gauntletLayer?.InputRestrictions.SetInputRestrictions(true, InputUsageMask.All);
-
-                    _inRtsCam = true;
                     if (_dataSource != null)
                         _dataSource.IsEnabled = true;
                 }
                 else if (Mission.Mode == MissionMode.Deployment)
                 {
+                    _inRtsCam = false;
                     Mission.SetMissionMode(MissionMode.Battle, false);
                     _gauntletLayer?.InputRestrictions.SetMouseVisibility(false);
                     _gauntletLayer?.InputRestrictions.ResetInputRestrictions();
-                    _inRtsCam = false;
                     if (_dataSource != null)
                         _dataSource.IsEnabled = false;
                 }
