@@ -126,6 +126,12 @@ namespace SimpleRTSCam
                         _dataSource.IsEnabled = true;
                         _delayVMTick = 0f;
                     }
+                    {
+                        new Traverse(MissionScreen).Property("CameraElevation").SetValue(-0.8f);
+                        var forward = Mission.MainAgent.LookDirection;
+                        var cameraPos = Mission.MainAgent.Position + (-forward) * 18f + Vec3.Up * 20f;
+                        MissionScreen.CombatCamera.Position = cameraPos;
+                    }
                 }
                 else if (Mission.Mode == MissionMode.Deployment)
                 {
