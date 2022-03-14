@@ -42,8 +42,10 @@ namespace SimpleRTSCam
         }
     }
 
-    // Patch to remove deselecting formations after giving order in OoB ui
-    // The og behavior doesn't make sense since the formations aren't really deselected, it's just a visual bug
+    // Patch to remove deselecting formations after giving order in OoB ui.
+    // This patch isn't perfect since you actually want this with orders that close order view.
+    // However, the og behavior doesn't make sense either since the formations aren't really deselected, it's just a visual bug.
+    // Since it's already broken, I can't be bothered to fix it for OoB, but only for RTS cam.
     [HarmonyPatch(typeof(OrderOfBattleVM), "OnOrderIssued")]
     internal class OrderOfBattleVMPatch: HarmonyPatch
     {

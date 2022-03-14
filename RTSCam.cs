@@ -1,4 +1,5 @@
-﻿using System;
+﻿using HarmonyLib;
+using System;
 using System.Collections.Generic;
 using TaleWorlds.Core;
 using TaleWorlds.Engine.GauntletUI;
@@ -7,7 +8,9 @@ using TaleWorlds.InputSystem;
 using TaleWorlds.Library;
 using TaleWorlds.MountAndBlade;
 using TaleWorlds.MountAndBlade.GauntletUI;
+using TaleWorlds.MountAndBlade.View;
 using TaleWorlds.MountAndBlade.View.Missions;
+using TaleWorlds.MountAndBlade.ViewModelCollection;
 using TaleWorlds.MountAndBlade.ViewModelCollection.OrderOfBattle;
 
 namespace SimpleRTSCam
@@ -31,12 +34,12 @@ namespace SimpleRTSCam
                 deploymentView.OnDeploymentFinish = (OnPlayerDeploymentFinishDelegate)Delegate.Combine(deploymentView.OnDeploymentFinish,
                     new OnPlayerDeploymentFinishDelegate(OnDeploymentFinish));
             }
-
             _dataSource = new OrderOfBattleVM();
             _gauntletLayer = new GauntletLayer(this.ViewOrderPriority, "GauntletLayer", false);
             _movie = _gauntletLayer.LoadMovie("RTSFormations", _dataSource);
             _orderUIHandler = base.Mission.GetMissionBehavior<MissionOrderGauntletUIHandler>();
             MissionScreen.AddLayer(_gauntletLayer);
+            Game.Current.EventManager.RegisterEvent<MissionPlayerToggledOrderViewEvent>(new Action<MissionPlayerToggledOrderViewEvent>(this.OnToggleOrder));
         }
         public override void OnMissionScreenFinalize()
         {
@@ -45,15 +48,23 @@ namespace SimpleRTSCam
                 _gauntletLayer.ReleaseMovie(this._movie);
                 MissionScreen.RemoveLayer(this._gauntletLayer);
             }
+            Game.Current.EventManager.UnregisterEvent<MissionPlayerToggledOrderViewEvent>(this.OnToggleOrder);
             base.OnMissionScreenFinalize();
+        }
+        private void OnToggleOrder(MissionPlayerToggledOrderViewEvent ev)
+        {
+            if (!ev.IsOrderEnabled)
+            {
+                _dataSource?.DeselectAllFormations();
+            }
         }
         void OnDeploymentFinish()
         {
             _battleStarted = true;
-            this._dataSource?.Initialize(base.Mission, base.MissionScreen.CombatCamera, 
-                new Action<int>(this.SelectFormationAtIndex), new Action<int>(this.DeselectFormationAtIndex), 
-                () => { }, () => { }, 
-                new Dictionary<int, Agent>(), (Agent) => {});
+            this._dataSource?.Initialize(base.Mission, base.MissionScreen.CombatCamera,
+                new Action<int>(this.SelectFormationAtIndex), new Action<int>(this.DeselectFormationAtIndex),
+                () => { }, () => { },
+                new Dictionary<int, Agent>(), (Agent) => { });
         }
         private void SelectFormationAtIndex(int index)
         {
@@ -63,13 +74,26 @@ namespace SimpleRTSCam
         {
             _orderUIHandler?.DeselectFormationAtIndex(index);
         }
-
+        public void TryCloseOrderControls()
+        {
+            if (_orderUIHandler != null)
+            {
+                Traverse tr = new Traverse(_orderUIHandler);
+                var orderVM = tr.Field("_dataSource").GetValue<MissionOrderVM>();
+                if (orderVM != null)
+                {
+                    orderVM.TryCloseToggleOrder(true);
+                }
+            }
+        }
         public override void OnMissionScreenTick(float dt)
         {
             base.OnMissionScreenTick(dt);
 
             if (_inRtsCam)
             {
+                // Order UI handler *almost* does the right mouse handling already. However, when
+                // that layer is closed, things break. So we have to do this stuff again.
                 if (base.MissionScreen.SceneLayer.Input.IsKeyPressed(InputKey.RightMouseButton))
                 {
                     _gauntletLayer?.InputRestrictions.SetMouseVisibility(false);
@@ -78,17 +102,6 @@ namespace SimpleRTSCam
                 {
                     _gauntletLayer?.InputRestrictions.SetMouseVisibility(true);
                 }
-                var orderController = Mission.Current.PlayerTeam.PlayerOrderController;
-                /*if (orderController != null)
-                {
-                    _dataSource?.DeselectAllFormations();
-                    foreach(var f in orderController.SelectedFormations)
-                    {
-                        _dataSource?.SelectFormationItemAtIndex(f.Index);
-                    }
-                }
-                */
-
                 _dataSource?.OnUnitDeployed();
                 _dataSource?.Tick();
             }
@@ -99,8 +112,9 @@ namespace SimpleRTSCam
                     _inRtsCam = true;
                     Mission.ClearDeploymentPlanForSide(Mission.PlayerTeam.Side);
                     Mission.SetMissionMode(MissionMode.Deployment, false);
-                    _gauntletLayer?.InputRestrictions.SetMouseVisibility(true);
                     _gauntletLayer?.InputRestrictions.SetInputRestrictions(true, InputUsageMask.All);
+                    if (_orderUIHandler != null)
+                        new Traverse(_orderUIHandler).Property("IsBattleDeployment").SetValue(true);
                     if (_dataSource != null)
                         _dataSource.IsEnabled = true;
                 }
@@ -108,12 +122,24 @@ namespace SimpleRTSCam
                 {
                     _inRtsCam = false;
                     Mission.SetMissionMode(MissionMode.Battle, false);
-                    _gauntletLayer?.InputRestrictions.SetMouseVisibility(false);
                     _gauntletLayer?.InputRestrictions.ResetInputRestrictions();
+                    if (_orderUIHandler != null)
+                        new Traverse(_orderUIHandler).Property("IsBattleDeployment").SetValue(false);
                     if (_dataSource != null)
                         _dataSource.IsEnabled = false;
+                    TryCloseOrderControls();
                 }
             }
         }
+
+        public override bool OnEscape()
+        {
+            if (_inRtsCam)
+            {
+                _dataSource?.DeselectAllFormations();
+            }
+            return false;
+        }
+
     }
 }
