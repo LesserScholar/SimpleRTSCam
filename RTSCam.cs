@@ -51,9 +51,11 @@ namespace SimpleRTSCam
             Game.Current.EventManager.UnregisterEvent<MissionPlayerToggledOrderViewEvent>(this.OnToggleOrder);
             base.OnMissionScreenFinalize();
         }
+        bool _isOrderEnabled = false;
         private void OnToggleOrder(MissionPlayerToggledOrderViewEvent ev)
         {
-            if (!ev.IsOrderEnabled)
+            _isOrderEnabled = ev.IsOrderEnabled;
+            if (_isOrderEnabled)
             {
                 _dataSource?.DeselectAllFormations();
             }
@@ -153,6 +155,11 @@ namespace SimpleRTSCam
             if (_inRtsCam)
             {
                 _dataSource?.DeselectAllFormations();
+                if (_isOrderEnabled)
+                {
+                    TryCloseOrderControls();
+                    return true;
+                }
             }
             return false;
         }
