@@ -116,7 +116,8 @@ namespace SimpleRTSCam
                 if (Mission.Mode == MissionMode.Battle)
                 {
                     _inRtsCam = true;
-                    Mission.ClearDeploymentPlanForSide(Mission.PlayerTeam.Side);
+                    if (!Mission.IsSiegeBattle)
+                        Mission.ClearDeploymentPlanForSide(Mission.PlayerTeam.Side);
                     Mission.SetMissionMode(MissionMode.Deployment, false);
                     _gauntletLayer?.InputRestrictions.SetInputRestrictions(true, InputUsageMask.All);
                     if (_orderUIHandler != null)
