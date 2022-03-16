@@ -119,7 +119,7 @@ namespace SimpleRTSCam
                     _dataSource?.Tick();
                 }
             }
-            if (_battleStarted && Input.IsKeyPressed(InputKey.F10))
+            if (_battleStarted && (Input.IsKeyPressed(InputKey.F10) || Input.IsGameKeyPressed(CombatHotKeyCategory.PushToTalk)))
             {
                 if (_inRtsCam)
                     ExitRtsCam();
