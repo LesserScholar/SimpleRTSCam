@@ -130,12 +130,10 @@ namespace SimpleRTSCam
             }
         }
 
-        MethodBase MissionScreenOnModeChange => AccessTools.Method(typeof(MissionScreen), "TaleWorlds.MountAndBlade.IMissionListener.OnMissionModeChange");
         public void ExitRtsCam()
         {
             if (!_inRtsCam || Mission.MainAgent == null) return;
             _inRtsCam = false;
-            //MissionScreenOnModeChange.Invoke(MissionScreen, new object[] { MissionMode.Deployment, false });
 
             _gauntletLayer?.InputRestrictions.ResetInputRestrictions();
             if (_orderUIHandler != null)
@@ -148,7 +146,6 @@ namespace SimpleRTSCam
         {
             if (Mission.Mode != MissionMode.Battle || Mission.MainAgent == null) return;
             _inRtsCam = true;
-            //MissionScreenOnModeChange.Invoke(MissionScreen, new object[] { MissionMode.Battle, false });
 
             _gauntletLayer?.InputRestrictions.SetInputRestrictions(true, InputUsageMask.All);
             if (_orderUIHandler != null)
