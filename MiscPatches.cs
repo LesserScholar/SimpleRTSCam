@@ -124,4 +124,15 @@ namespace SimpleRTSCam
             return codes;
         }
     }
+    
+    // Get the troop count from formation so it's updated when troops die.
+    [HarmonyPatch(typeof(OrderOfBattleFormationItemVM), "Tick")]
+    internal class OrderOfBattleFormationItemVMPatch : HarmonyPatch
+    {
+        static void Postfix(OrderOfBattleFormationItemVM __instance)
+        {
+            __instance.TroopCount = __instance.Formation.CountOfUnits;
+        }
+    }
+
 }
