@@ -3,6 +3,7 @@ using SandBox.ViewModelCollection;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
+using TaleWorlds.Library;
 using TaleWorlds.MountAndBlade;
 using TaleWorlds.MountAndBlade.GauntletUI;
 using TaleWorlds.MountAndBlade.GauntletUI.Mission;
@@ -135,4 +136,22 @@ namespace SimpleRTSCam
         }
     }
 
+    // Use average instead of median position for formation icons.
+    [HarmonyPatch(typeof(OrderOfBattleFormationItemVM), "RefreshMarkerWorldPosition")]
+    internal class AvgPositionFormationItemVMPatch : HarmonyPatch
+    {
+        static bool Prefix(OrderOfBattleFormationItemVM __instance, ref Vec3 ____worldPosition)
+        {
+            if (__instance.Formation == null) return false;
+            if (__instance.Formation.CountOfUnitsWithoutDetachedOnes > 1)
+            {
+                Vec2 point = __instance.Formation.GetAveragePositionOfUnits(true, true);
+                ____worldPosition = point.ToVec3();
+                Mission.Current.Scene.GetHeightAtPoint(point, TaleWorlds.Engine.BodyFlags.CommonCollisionExcludeFlagsForCombat, ref ____worldPosition.z);
+                ____worldPosition.z += 1.3f;
+                return false;
+            }
+            return true;
+        }
+    }
 }
