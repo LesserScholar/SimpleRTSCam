@@ -14,6 +14,7 @@ using TaleWorlds.MountAndBlade.View;
 using TaleWorlds.MountAndBlade.View.Missions;
 using TaleWorlds.MountAndBlade.View.Screen;
 using TaleWorlds.MountAndBlade.ViewModelCollection;
+using TaleWorlds.MountAndBlade.ViewModelCollection.Order;
 using TaleWorlds.MountAndBlade.ViewModelCollection.OrderOfBattle;
 
 namespace SimpleRTSCam
@@ -26,11 +27,14 @@ namespace SimpleRTSCam
         bool _inRtsCam = false;
         public bool InRtsCam { get { return _inRtsCam; } }
 
-        private OrderOfBattleVM? _dataSource;
+        private RTSFormationsVM? _dataSource;
         private GauntletLayer? _gauntletLayer;
         private IGauntletMovie? _movie;
-        private MissionOrderGauntletUIHandler? _orderUIHandler;
+
         private float _delayVMTick = 0f;
+
+        private MissionOrderGauntletUIHandler? _orderUIHandler;
+        MissionOrderVM? _missionOrderVM;
         public override void OnMissionScreenInitialize()
         {
             base.OnMissionScreenInitialize();
@@ -40,11 +44,15 @@ namespace SimpleRTSCam
             {
                 deploymentView.OnDeploymentFinish = (OnPlayerDeploymentFinishDelegate)Delegate.Combine(deploymentView.OnDeploymentFinish,
                     new OnPlayerDeploymentFinishDelegate(OnDeploymentFinish));
+
             }
-            _dataSource = new OrderOfBattleVM();
             _gauntletLayer = new GauntletLayer(this.ViewOrderPriority, "GauntletLayer", false);
+            _dataSource = new RTSFormationsVM();
             _movie = _gauntletLayer.LoadMovie("RTSFormations", _dataSource);
+
             _orderUIHandler = Mission.GetMissionBehavior<MissionOrderGauntletUIHandler>();
+            _missionOrderVM = (MissionOrderVM)AccessTools.Field(typeof(MissionOrderGauntletUIHandler), "_dataSource").GetValue(_orderUIHandler);
+
             MissionScreen.AddLayer(_gauntletLayer);
             Game.Current.EventManager.RegisterEvent<MissionPlayerToggledOrderViewEvent>(new Action<MissionPlayerToggledOrderViewEvent>(this.OnToggleOrder));
         }
@@ -63,16 +71,18 @@ namespace SimpleRTSCam
         {
             if (ev.IsOrderEnabled)
             {
-                _dataSource?.DeselectAllFormations();
+                _dataSource.DeselectAllFormations();
             }
         }
         void OnDeploymentFinish()
         {
             _battleStarted = true;
-            this._dataSource?.Initialize(base.Mission, base.MissionScreen.CombatCamera,
+
+            _dataSource.Initialize(base.Mission, base.MissionScreen.CombatCamera,
                 new Action<int>(this.SelectFormationAtIndex), new Action<int>(this.DeselectFormationAtIndex),
                 () => { }, () => { },
                 new Dictionary<int, Agent>(), (Agent) => { });
+            _dataSource.missionOrderVM = _missionOrderVM;
         }
         private void SelectFormationAtIndex(int index)
         {
@@ -84,14 +94,9 @@ namespace SimpleRTSCam
         }
         public void TryCloseOrderControls()
         {
-            if (_orderUIHandler != null)
+            if (_missionOrderVM != null)
             {
-                Traverse tr = new Traverse(_orderUIHandler);
-                var orderVM = tr.Field("_dataSource").GetValue<MissionOrderVM>();
-                if (orderVM != null)
-                {
-                    orderVM.TryCloseToggleOrder(true);
-                }
+                _missionOrderVM.TryCloseToggleOrder(true);
             }
         }
         public override void OnMissionScreenTick(float dt)
@@ -116,7 +121,7 @@ namespace SimpleRTSCam
                 if (_delayVMTick > 0.08f)
                 {
                     _dataSource?.OnUnitDeployed();
-                    _dataSource?.Tick();
+                    _dataSource?.RtsTick();
                 }
             }
             if (_battleStarted && (Input.IsKeyPressed(InputKey.F10) || Input.IsGameKeyPressed(CombatHotKeyCategory.PushToTalk)))
@@ -228,6 +233,61 @@ namespace SimpleRTSCam
                 }
             }
             return codes;
+        }
+    }
+
+    public class RTSFormationsVM : OrderOfBattleVM
+    {
+        public MissionOrderVM missionOrderVM;
+        public void RtsTick()
+        {
+            // This is going to be very dumb code but w/e. All of this is just to update the icons when troops are transfered between formations.
+            // The formation classes and deployment formation classes seem a bit complicated to me.
+            var troopList = missionOrderVM.TroopController.TroopList;
+            foreach (OrderTroopItemVM ti in troopList)
+            {
+                int i = ti.Formation.Index;
+                if (_allFormations.Count < i) continue;
+                // If formation class is set to one of the double classes, leave it alone.
+                if (_allFormations[i].OrderOfBattleFormationClassInt >= (int)DeploymentFormationClass.InfantryAndRanged) continue;
+                // This is not the displayed formation class. This is just something that has to be set to a valid value or else it wont let it update.
+                // Has to be set with reflection because setting the property sends an order to change the formation class.
+                AccessTools.Field(typeof(OrderOfBattleFormationClassVM), "_class").SetValue(_allFormations[i].Classes[0], FormationClass.Infantry);
+
+                float bestRatio = 0.0f;
+                DeploymentFormationClass bestClass = DeploymentFormationClass.Unset;
+
+                float r = ti.Formation.QuerySystem.InfantryUnitRatio;
+                if (r > bestRatio)
+                {
+                    bestRatio = r;
+                    bestClass = DeploymentFormationClass.Infantry;
+                }
+                r = ti.Formation.QuerySystem.RangedUnitRatio;
+                if (r > bestRatio)
+                {
+                    bestRatio = r;
+                    bestClass = DeploymentFormationClass.Ranged;
+                }
+                r = ti.Formation.QuerySystem.CavalryUnitRatio;
+                if (r > bestRatio)
+                {
+                    bestRatio = r;
+                    bestClass = DeploymentFormationClass.Cavalry;
+                }
+                r = ti.Formation.QuerySystem.RangedCavalryUnitRatio;
+                if (r > bestRatio)
+                {
+                    bestRatio = r;
+                    bestClass = DeploymentFormationClass.HorseArcher;
+                }
+                _allFormations[i].OrderOfBattleFormationClassInt = (int)bestClass;
+            }
+
+            foreach (var f in _allFormations)
+            {
+                f.Tick();
+            }
         }
     }
 }
