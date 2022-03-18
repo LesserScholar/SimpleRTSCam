@@ -45,16 +45,17 @@ namespace SimpleRTSCam
                 deploymentView.OnDeploymentFinish = (OnPlayerDeploymentFinishDelegate)Delegate.Combine(deploymentView.OnDeploymentFinish,
                     new OnPlayerDeploymentFinishDelegate(OnDeploymentFinish));
 
+                _gauntletLayer = new GauntletLayer(this.ViewOrderPriority, "GauntletLayer", false);
+                _dataSource = new RTSFormationsVM();
+                _movie = _gauntletLayer.LoadMovie("RTSFormations", _dataSource);
+
+                _orderUIHandler = Mission.GetMissionBehavior<MissionOrderGauntletUIHandler>();
+                if (_orderUIHandler != null)
+                    _missionOrderVM = (MissionOrderVM)AccessTools.Field(typeof(MissionOrderGauntletUIHandler), "_dataSource").GetValue(_orderUIHandler);
+
+                MissionScreen.AddLayer(_gauntletLayer);
+                Game.Current.EventManager.RegisterEvent<MissionPlayerToggledOrderViewEvent>(new Action<MissionPlayerToggledOrderViewEvent>(this.OnToggleOrder));
             }
-            _gauntletLayer = new GauntletLayer(this.ViewOrderPriority, "GauntletLayer", false);
-            _dataSource = new RTSFormationsVM();
-            _movie = _gauntletLayer.LoadMovie("RTSFormations", _dataSource);
-
-            _orderUIHandler = Mission.GetMissionBehavior<MissionOrderGauntletUIHandler>();
-            _missionOrderVM = (MissionOrderVM)AccessTools.Field(typeof(MissionOrderGauntletUIHandler), "_dataSource").GetValue(_orderUIHandler);
-
-            MissionScreen.AddLayer(_gauntletLayer);
-            Game.Current.EventManager.RegisterEvent<MissionPlayerToggledOrderViewEvent>(new Action<MissionPlayerToggledOrderViewEvent>(this.OnToggleOrder));
         }
         public override void OnMissionScreenFinalize()
         {
@@ -63,8 +64,9 @@ namespace SimpleRTSCam
             {
                 _gauntletLayer.ReleaseMovie(this._movie);
                 MissionScreen.RemoveLayer(this._gauntletLayer);
+
+                Game.Current.EventManager.UnregisterEvent<MissionPlayerToggledOrderViewEvent>(this.OnToggleOrder);
             }
-            Game.Current.EventManager.UnregisterEvent<MissionPlayerToggledOrderViewEvent>(this.OnToggleOrder);
             base.OnMissionScreenFinalize();
         }
         private void OnToggleOrder(MissionPlayerToggledOrderViewEvent ev)
@@ -197,7 +199,6 @@ namespace SimpleRTSCam
         {
             yield return AccessTools.Method(typeof(MissionScreen), "UpdateCamera");
             yield return AccessTools.Method(typeof(MissionScreen), "GetSpectatingData");
-            yield return AccessTools.Method(typeof(MissionScreen), "TaleWorlds.MountAndBlade.IMissionListener.OnMissionModeChange");
             yield return AccessTools.Method(typeof(MissionScreen), "HandleUserInput");
         }
         static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
