@@ -74,28 +74,10 @@ namespace SimpleRTSCam
             return codes;
         }
     }
-
-    // Patch to remove deselecting formations after giving order in OoB ui.
-    // This patch isn't perfect since you actually want this with orders that close order view.
-    // However, the og behavior doesn't make sense either since the formations aren't really deselected, it's just a visual bug.
-    // Since it's already broken, I can't be bothered to fix it for OoB, but only for RTS cam.
-    [HarmonyPatch(typeof(OrderOfBattleVM), "OnOrderIssued")]
-    internal class OrderOfBattleVMPatch: HarmonyPatch
-    {
-        static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
-        {
-            var codes = new List<CodeInstruction>(instructions);
-            if (codes[1].opcode == OpCodes.Call
-                && codes[1].operand == (object)AccessTools.Method(typeof(OrderOfBattleVM), "DeselectAllFormations"))
-            {
-                codes.RemoveRange(0, 2);
-            }
-            return codes;
-        }
-    }
     
     // Do not unload order of battle sprites when deployment finishes.
     // MissionOrderOfBattleGauntletUIHandler should try to unload them at end of mission as well.
+    // It might be better to manage the sprites in this module instead of using Harmony, but it's ok either way.
     [HarmonyPatch(typeof(MissionOrderOfBattleGauntletUIHandler), "OnDeploymentFinish")]
     internal class MissionOrderOfBattleGauntletUIHandlerPatch : HarmonyPatch
     {
@@ -123,35 +105,6 @@ namespace SimpleRTSCam
                 }
             }
             return codes;
-        }
-    }
-    
-    // Get the troop count from formation so it's updated when troops die.
-    [HarmonyPatch(typeof(OrderOfBattleFormationItemVM), "Tick")]
-    internal class OrderOfBattleFormationItemVMPatch : HarmonyPatch
-    {
-        static void Postfix(OrderOfBattleFormationItemVM __instance)
-        {
-            __instance.TroopCount = __instance.Formation.CountOfUnits;
-        }
-    }
-
-    // Use average instead of median position for formation icons.
-    [HarmonyPatch(typeof(OrderOfBattleFormationItemVM), "RefreshMarkerWorldPosition")]
-    internal class AvgPositionFormationItemVMPatch : HarmonyPatch
-    {
-        static bool Prefix(OrderOfBattleFormationItemVM __instance, ref Vec3 ____worldPosition)
-        {
-            if (__instance.Formation == null) return false;
-            if (__instance.Formation.CountOfUnitsWithoutDetachedOnes > 1)
-            {
-                Vec2 point = __instance.Formation.GetAveragePositionOfUnits(true, true);
-                ____worldPosition = point.ToVec3();
-                Mission.Current.Scene.GetHeightAtPoint(point, TaleWorlds.Engine.BodyFlags.CommonCollisionExcludeFlagsForCombat, ref ____worldPosition.z);
-                ____worldPosition.z += 1.3f;
-                return false;
-            }
-            return true;
         }
     }
 }

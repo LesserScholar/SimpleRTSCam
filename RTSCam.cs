@@ -10,12 +10,9 @@ using TaleWorlds.InputSystem;
 using TaleWorlds.Library;
 using TaleWorlds.MountAndBlade;
 using TaleWorlds.MountAndBlade.GauntletUI;
-using TaleWorlds.MountAndBlade.View;
 using TaleWorlds.MountAndBlade.View.Missions;
 using TaleWorlds.MountAndBlade.View.Screen;
 using TaleWorlds.MountAndBlade.ViewModelCollection;
-using TaleWorlds.MountAndBlade.ViewModelCollection.Order;
-using TaleWorlds.MountAndBlade.ViewModelCollection.OrderOfBattle;
 
 namespace SimpleRTSCam
 {
@@ -27,13 +24,11 @@ namespace SimpleRTSCam
         bool _inRtsCam = false;
         public bool InRtsCam { get { return _inRtsCam; } }
 
-        private RTSFormationsVM? _dataSource;
-        private GauntletLayer? _gauntletLayer;
-        private IGauntletMovie? _movie;
+        private RTSFormationsVM _dataSource;
+        private GauntletLayer _gauntletLayer;
+        private IGauntletMovie _movie;
 
-        private float _delayVMTick = 0f;
-
-        private MissionOrderGauntletUIHandler? _orderUIHandler;
+        public MissionOrderGauntletUIHandler orderUIHandler;
         MissionOrderVM? _missionOrderVM;
         public override void OnMissionScreenInitialize()
         {
@@ -46,15 +41,13 @@ namespace SimpleRTSCam
                     new OnPlayerDeploymentFinishDelegate(OnDeploymentFinish));
 
                 _gauntletLayer = new GauntletLayer(this.ViewOrderPriority, "GauntletLayer", false);
-                _dataSource = new RTSFormationsVM();
+                _dataSource = new RTSFormationsVM(this);
                 _movie = _gauntletLayer.LoadMovie("RTSFormations", _dataSource);
 
-                _orderUIHandler = Mission.GetMissionBehavior<MissionOrderGauntletUIHandler>();
-                if (_orderUIHandler != null)
-                    _missionOrderVM = (MissionOrderVM)AccessTools.Field(typeof(MissionOrderGauntletUIHandler), "_dataSource").GetValue(_orderUIHandler);
-
+                orderUIHandler = Mission.GetMissionBehavior<MissionOrderGauntletUIHandler>();
+                _missionOrderVM = (MissionOrderVM)AccessTools.Field(typeof(MissionOrderGauntletUIHandler), "_dataSource").GetValue(orderUIHandler);
+                
                 MissionScreen.AddLayer(_gauntletLayer);
-                Game.Current.EventManager.RegisterEvent<MissionPlayerToggledOrderViewEvent>(new Action<MissionPlayerToggledOrderViewEvent>(this.OnToggleOrder));
             }
         }
         public override void OnMissionScreenFinalize()
@@ -64,36 +57,16 @@ namespace SimpleRTSCam
             {
                 _gauntletLayer.ReleaseMovie(this._movie);
                 MissionScreen.RemoveLayer(this._gauntletLayer);
-
-                Game.Current.EventManager.UnregisterEvent<MissionPlayerToggledOrderViewEvent>(this.OnToggleOrder);
             }
             base.OnMissionScreenFinalize();
         }
-        private void OnToggleOrder(MissionPlayerToggledOrderViewEvent ev)
-        {
-            if (ev.IsOrderEnabled)
-            {
-                _dataSource.DeselectAllFormations();
-            }
-        }
+
         void OnDeploymentFinish()
         {
             _battleStarted = true;
+            _dataSource.Initialize();
+        }
 
-            _dataSource.Initialize(base.Mission, base.MissionScreen.CombatCamera,
-                new Action<int>(this.SelectFormationAtIndex), new Action<int>(this.DeselectFormationAtIndex),
-                () => { }, () => { },
-                new Dictionary<int, Agent>(), (Agent) => { });
-            _dataSource.missionOrderVM = _missionOrderVM;
-        }
-        private void SelectFormationAtIndex(int index)
-        {
-            _orderUIHandler?.SelectFormationAtIndex(index);
-        }
-        private void DeselectFormationAtIndex(int index)
-        {
-            _orderUIHandler?.DeselectFormationAtIndex(index);
-        }
         public void TryCloseOrderControls()
         {
             if (_missionOrderVM != null)
@@ -111,20 +84,14 @@ namespace SimpleRTSCam
                 // that layer is closed, things break. So we have to do this stuff again.
                 if (base.MissionScreen.SceneLayer.Input.IsKeyPressed(InputKey.RightMouseButton))
                 {
-                    _gauntletLayer?.InputRestrictions.SetMouseVisibility(false);
+                    _gauntletLayer.InputRestrictions.SetMouseVisibility(false);
                 }
                 if (base.MissionScreen.SceneLayer.Input.IsKeyReleased(InputKey.RightMouseButton))
                 {
-                    _gauntletLayer?.InputRestrictions.SetMouseVisibility(true);
+                    _gauntletLayer.InputRestrictions.SetMouseVisibility(true);
                 }
-                // This is a bit silly hack, but something about tick right after enable seems to cause
-                // the VM to go into endless recursion of updating properties.
-                _delayVMTick += dt;
-                if (_delayVMTick > 0.08f)
-                {
-                    _dataSource?.OnUnitDeployed();
-                    _dataSource?.RtsTick();
-                }
+
+                _dataSource.Tick();
             }
             if (_battleStarted && (Input.IsKeyPressed(InputKey.F10) || Input.IsGameKeyPressed(CombatHotKeyCategory.PushToTalk)))
             {
@@ -141,10 +108,9 @@ namespace SimpleRTSCam
             _inRtsCam = false;
 
             _gauntletLayer?.InputRestrictions.ResetInputRestrictions();
-            if (_orderUIHandler != null)
-                new Traverse(_orderUIHandler).Property("IsBattleDeployment").SetValue(false);
-            if (_dataSource != null)
-                _dataSource.IsEnabled = false;
+            _dataSource.OnPropertyChanged("IsEnabled");
+            if (orderUIHandler != null)
+                new Traverse(orderUIHandler).Property("IsBattleDeployment").SetValue(false);
             TryCloseOrderControls();
         }
         public void OpenRtsCam()
@@ -152,17 +118,19 @@ namespace SimpleRTSCam
             if (Mission.Mode != MissionMode.Battle || Mission.MainAgent == null) return;
             _inRtsCam = true;
 
+            _dataSource.OnPropertyChanged("IsEnabled");
             _gauntletLayer?.InputRestrictions.SetInputRestrictions(true, InputUsageMask.All);
-            if (_orderUIHandler != null)
-                new Traverse(_orderUIHandler).Property("IsBattleDeployment").SetValue(true);
-            if (_dataSource != null)
-            {
-                _dataSource.IsEnabled = true;
-                _delayVMTick = 0f;
-            }
+            if (orderUIHandler != null)
+                new Traverse(orderUIHandler).Property("IsBattleDeployment").SetValue(true);
+
             new Traverse(MissionScreen).Property("CameraElevation").SetValue(-0.4f);
             if (Mission.MainAgent != null)
-                MissionScreen.CombatCamera.Position = Mission.MainAgent.Position + Mission.MainAgent.LookDirection * -18f + Vec3.Up * 20f;
+            {
+                var lookDir = Mission.MainAgent.LookDirection;
+                lookDir.z = 0;
+                lookDir.Normalize();
+                MissionScreen.CombatCamera.Position = Mission.MainAgent.Position + lookDir * -18f + Vec3.Up * 20f;
+            }
             else
                 MissionScreen.CombatCamera.Position = MissionScreen.CombatCamera.Position + Vec3.Up * 20f;
         }
@@ -171,7 +139,6 @@ namespace SimpleRTSCam
         {
             if (_inRtsCam)
             {
-                _dataSource?.DeselectAllFormations();
                 if (Mission.IsOrderMenuOpen)
                 {
                     TryCloseOrderControls();
@@ -187,7 +154,6 @@ namespace SimpleRTSCam
             if (instance._inRtsCam) return MissionMode.Deployment;
             return instance.Mission.Mode;
         }
-
     }
 
     // Patch to show make the camera think the mission is in deployment mode
@@ -234,61 +200,6 @@ namespace SimpleRTSCam
                 }
             }
             return codes;
-        }
-    }
-
-    public class RTSFormationsVM : OrderOfBattleVM
-    {
-        public MissionOrderVM missionOrderVM;
-        public void RtsTick()
-        {
-            // This is going to be very dumb code but w/e. All of this is just to update the icons when troops are transfered between formations.
-            // The formation classes and deployment formation classes seem a bit complicated to me.
-            var troopList = missionOrderVM.TroopController.TroopList;
-            foreach (OrderTroopItemVM ti in troopList)
-            {
-                int i = ti.Formation.Index;
-                if (_allFormations.Count < i) continue;
-                // If formation class is set to one of the double classes, leave it alone.
-                if (_allFormations[i].OrderOfBattleFormationClassInt >= (int)DeploymentFormationClass.InfantryAndRanged) continue;
-                // This is not the displayed formation class. This is just something that has to be set to a valid value or else it wont let it update.
-                // Has to be set with reflection because setting the property sends an order to change the formation class.
-                AccessTools.Field(typeof(OrderOfBattleFormationClassVM), "_class").SetValue(_allFormations[i].Classes[0], FormationClass.Infantry);
-
-                float bestRatio = 0.0f;
-                DeploymentFormationClass bestClass = DeploymentFormationClass.Unset;
-
-                float r = ti.Formation.QuerySystem.InfantryUnitRatio;
-                if (r > bestRatio)
-                {
-                    bestRatio = r;
-                    bestClass = DeploymentFormationClass.Infantry;
-                }
-                r = ti.Formation.QuerySystem.RangedUnitRatio;
-                if (r > bestRatio)
-                {
-                    bestRatio = r;
-                    bestClass = DeploymentFormationClass.Ranged;
-                }
-                r = ti.Formation.QuerySystem.CavalryUnitRatio;
-                if (r > bestRatio)
-                {
-                    bestRatio = r;
-                    bestClass = DeploymentFormationClass.Cavalry;
-                }
-                r = ti.Formation.QuerySystem.RangedCavalryUnitRatio;
-                if (r > bestRatio)
-                {
-                    bestRatio = r;
-                    bestClass = DeploymentFormationClass.HorseArcher;
-                }
-                _allFormations[i].OrderOfBattleFormationClassInt = (int)bestClass;
-            }
-
-            foreach (var f in _allFormations)
-            {
-                f.Tick();
-            }
         }
     }
 }

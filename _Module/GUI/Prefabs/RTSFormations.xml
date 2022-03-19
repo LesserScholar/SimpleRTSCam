@@ -1,29 +1,16 @@
 <Prefab>
     <Window>
-        <OrderOfBattleScreenWidget UpdateChildrenStates="true" DoNotAcceptEvents="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" IsVisible="@IsEnabled" AreCameraControlsEnabled="@AreCameraControlsEnabled" CameraEnabledAlpha="0.30" AlphaChangeDuration="0.1" Markers="Markers" LeftSideFormations="LeftSideFormations" RightSideFormations="RightSideFormations" CommanderPool="CommanderPool">
+		<OrderOfBattleScreenWidget DoNotAcceptEvents="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" IsVisible="@IsEnabled" AreCameraControlsEnabled="true" CameraEnabledAlpha="0.30" AlphaChangeDuration="0.1" Markers="Markers">
             <Children>
-                <!-- Formation Markers -->
-                <Widget Id="Markers" UpdateChildrenStates="true" DoNotAcceptEvents="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent">
+				<Widget Id="Markers" DoNotAcceptEvents="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent">
                     <Children>
-
-                        <!-- First Half Markers -->
-                        <BasicContainer DataSource="{FormationsFirstHalf}" UpdateChildrenStates="true" DoNotAcceptEvents="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent">
+                        <BasicContainer DataSource="{Formations}" DoNotAcceptEvents="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent">
                             <ItemTemplate>
 
                                 <OrderOfBattle.Formation.Marker />
 
                             </ItemTemplate>
                         </BasicContainer>
-
-                        <!-- Second Half Markers -->
-                        <BasicContainer DataSource="{FormationsSecondHalf}" UpdateChildrenStates="true" DoNotAcceptEvents="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent">
-                            <ItemTemplate>
-
-                                <OrderOfBattle.Formation.Marker />
-
-                            </ItemTemplate>
-                        </BasicContainer>
-
                     </Children>
                 </Widget>
             </Children>
