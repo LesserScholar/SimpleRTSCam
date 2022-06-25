@@ -1,8 +1,9 @@
-﻿using TaleWorlds.Core;
+﻿using HarmonyLib;
+using TaleWorlds.Core;
 using TaleWorlds.Engine;
 using TaleWorlds.Library;
-using TaleWorlds.MountAndBlade.GauntletUI;
 using TaleWorlds.MountAndBlade;
+using TaleWorlds.MountAndBlade.GauntletUI.Mission.Singleplayer;
 
 namespace SimpleRTSCam
 {
@@ -11,7 +12,7 @@ namespace SimpleRTSCam
         public RTSCam rtsCam;
 
         [DataSourceProperty]
-        public bool IsEnabled => rtsCam.InRtsCam; 
+        public bool IsEnabled => rtsCam.InRtsCam;
 
         [DataSourceProperty]
         public MBBindingList<RTSFormationItemVM> Formations { get; set; }
@@ -43,7 +44,7 @@ namespace SimpleRTSCam
         public Formation formation;
         public Camera camera;
         public OrderController playerOrderController;
-        public MissionOrderGauntletUIHandler orderUIHandler;
+        public MissionGauntletSingleplayerOrderUIHandler orderUIHandler;
 
         [DataSourceProperty]
         public int OrderOfBattleFormationClassInt { get; set; }
@@ -70,7 +71,8 @@ namespace SimpleRTSCam
             this.mission = rts.Mission;
             this.camera = rts.MissionScreen.CombatCamera;
             playerOrderController = mission.PlayerTeam.PlayerOrderController;
-            orderUIHandler = rts.orderUIHandler;
+
+            orderUIHandler = rts._singleplayerOrderHandler;
         }
 
         public void Tick()
@@ -138,8 +140,14 @@ namespace SimpleRTSCam
 
         private void ExecuteSelection()
         {
-            if (IsSelected) orderUIHandler.DeselectFormationAtIndex(formation.Index);
-            else orderUIHandler.SelectFormationAtIndex(formation.Index);
+            if (IsSelected)
+            {
+                orderUIHandler.DeselectFormationAtIndex(formation.Index);
+            }
+            else
+            {
+                orderUIHandler.SelectFormationAtIndex(formation.Index);
+            }
         }
     }
 }

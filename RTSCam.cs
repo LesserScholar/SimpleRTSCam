@@ -9,10 +9,11 @@ using TaleWorlds.GauntletUI.Data;
 using TaleWorlds.InputSystem;
 using TaleWorlds.Library;
 using TaleWorlds.MountAndBlade;
-using TaleWorlds.MountAndBlade.GauntletUI;
-using TaleWorlds.MountAndBlade.View.Missions;
-using TaleWorlds.MountAndBlade.View.Screen;
-using TaleWorlds.MountAndBlade.ViewModelCollection;
+using TaleWorlds.MountAndBlade.GauntletUI.Mission.Singleplayer;
+using TaleWorlds.MountAndBlade.View.MissionViews;
+using TaleWorlds.MountAndBlade.View.MissionViews.Singleplayer;
+using TaleWorlds.MountAndBlade.View.Screens;
+using TaleWorlds.MountAndBlade.ViewModelCollection.Order;
 
 namespace SimpleRTSCam
 {
@@ -28,7 +29,8 @@ namespace SimpleRTSCam
         private GauntletLayer _gauntletLayer;
         private IGauntletMovie _movie;
 
-        public MissionOrderGauntletUIHandler orderUIHandler;
+        public MissionGauntletOrderOfBattleUIHandler _orderOfBattleHandler;
+        public MissionGauntletSingleplayerOrderUIHandler _singleplayerOrderHandler;
         MissionOrderVM? _missionOrderVM;
         public override void OnMissionScreenInitialize()
         {
@@ -44,9 +46,11 @@ namespace SimpleRTSCam
                 _dataSource = new RTSFormationsVM(this);
                 _movie = _gauntletLayer.LoadMovie("RTSFormations", _dataSource);
 
-                orderUIHandler = Mission.GetMissionBehavior<MissionOrderGauntletUIHandler>();
-                _missionOrderVM = (MissionOrderVM)AccessTools.Field(typeof(MissionOrderGauntletUIHandler), "_dataSource").GetValue(orderUIHandler);
+                _orderOfBattleHandler = Mission.GetMissionBehavior<MissionGauntletOrderOfBattleUIHandler>();
                 
+                _singleplayerOrderHandler = Mission.GetMissionBehavior< MissionGauntletSingleplayerOrderUIHandler>();
+                _missionOrderVM = (MissionOrderVM)AccessTools.Field(typeof(MissionGauntletSingleplayerOrderUIHandler), "_dataSource").GetValue(_singleplayerOrderHandler);
+
                 MissionScreen.AddLayer(_gauntletLayer);
             }
         }
@@ -109,8 +113,8 @@ namespace SimpleRTSCam
 
             _gauntletLayer?.InputRestrictions.ResetInputRestrictions();
             _dataSource.OnPropertyChanged("IsEnabled");
-            if (orderUIHandler != null)
-                new Traverse(orderUIHandler).Property("IsBattleDeployment").SetValue(false);
+            if (_orderOfBattleHandler != null)
+                new Traverse(_orderOfBattleHandler).Property("IsBattleDeployment").SetValue(false);
             TryCloseOrderControls();
         }
         public void OpenRtsCam()
@@ -120,8 +124,8 @@ namespace SimpleRTSCam
 
             _dataSource.OnPropertyChanged("IsEnabled");
             _gauntletLayer?.InputRestrictions.SetInputRestrictions(true, InputUsageMask.All);
-            if (orderUIHandler != null)
-                new Traverse(orderUIHandler).Property("IsBattleDeployment").SetValue(true);
+            if (_orderOfBattleHandler != null)
+                new Traverse(_orderOfBattleHandler).Property("IsBattleDeployment").SetValue(true);
 
             new Traverse(MissionScreen).Property("CameraElevation").SetValue(-0.4f);
             if (Mission.MainAgent != null)
